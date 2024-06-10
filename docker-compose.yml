@@ -1,0 +1,15 @@
+services:
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+  front:
+    build: 
+      context: .
+      dockerfile: front.Dockerfile
+    environment:
+      API_URL:  http://api:5000
+    ports:
+      - "8080:80"
