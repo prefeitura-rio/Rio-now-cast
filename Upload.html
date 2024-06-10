@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload de Imagens</title>
+</head>
+<body>
+    <h2>Upload de Imagens</h2>
+
+    <select id="types">
+      <option value="cp">CP</option>
+      <option value="ki">KI</option>
+      <option value="li">LI</option>
+      <option value="tt">TT</option>
+      <option value="si">SI</option>  
+    </select>
+    <input type="file" name="image" id="inputfile">
+    <br><br>
+
+    <input type="text" name="value" id="inputtext" style="width: 40px;">
+    <br><br>
+    <button onclick="Enviar()">Enviar</button>
+
+    <script>
+      function Enviar() {
+        var sel = document.getElementById('types');
+        var op = sel.options[sel.selectedIndex].value;
+        const formData = new FormData();
+        formData.append('image', document.getElementById('inputfile').files[0]);
+        formData.append('value', document.getElementById('inputtext').value);
+        fetch('http://127.0.0.1:5000/upload/'+op, {  
+          method: 'POST',
+          body: formData
+        })
+      }
+    </script>
+
+
+</body>
+</html>

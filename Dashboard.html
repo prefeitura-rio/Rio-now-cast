@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>	
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <title>Rionowcast</title>
+	<link rel="shortcut icon" href="./imgs/favicon.ico" type="image/x-icon">
+</head>
+
+<body class="base">
+
+    <div class="headerMain">
+        <img src="./imgs/rionowcast.png" style="height: 80%; margin-right: 20px;">
+		Rionowcast
+    </div>
+
+    <div class="panelSatellite" id="panelSatellite">
+
+        <div class="commands">
+            <div class="leftBtn">
+                <img class="ctrlBtn1" onclick="ChangeChartType('bar')" src="imgs/chartBar.svg"/>
+                <img class="ctrlBtn1" onclick="ChangeChartType('line')" src="imgs/chartLine.svg"/>
+                <img class="ctrlBtn1" id="play" onclick="StartAutoUpdate()" src="imgs/play.svg"/>
+                <img class="ctrlBtn1" id="stop" onclick="StopAutoUpdate()" src="imgs/stop.svg" style="display: none;" />
+                <img class="connStatus" src="imgs/off.svg" id="connStatus" />
+            </div>
+                <img class="ctrlBtn1" onclick="ChangeFullScreen()" src="imgs/grid.svg"/>
+            <div>
+                <!-- <item class="ctrlBtn2" onclick="ChangeSatellitePanel(this)">ALL</item> -->
+                <item class="ctrlBtn2" onclick="ChangeSatellitePanel(this)" id="btnCP">CP</item>
+                <item class="ctrlBtn2" onclick="ChangeSatellitePanel(this)">KI</item>
+                <item class="ctrlBtn2" onclick="ChangeSatellitePanel(this)">LI</item>
+                <item class="ctrlBtn2" onclick="ChangeSatellitePanel(this)">TT</item>
+                <item class="ctrlBtn2" onclick="ChangeSatellitePanel(this)">SI</item>
+            </div>
+        </div>
+
+        <div class="panel" id="CP">
+            <div class="canvas"><canvas id="chartCP"></canvas></div>
+            <img class="img" id="imgCP"/>
+          </div>
+        
+        <div class="panel" id="KI">            
+            <div class="canvas"><canvas id="chartKI"></canvas></div>
+            <img class="img" id="imgKI" />
+        </div>
+        <div class="panel" id="LI">
+            <div class="canvas"><canvas id="chartLI"></canvas></div>
+            <img class="img" id="imgLI" />
+        </div>
+        <div class="panel" id="TT">            
+            <div class="canvas"><canvas id="chartTT"></canvas></div>
+            <img class="img" id="imgTT" />
+        </div>
+        <div class="panel" id="SI">
+            <div class="canvas"><canvas id="chartSI"></canvas></div>
+            <img class="img" id="imgSI" />
+        </div>
+        
+        <div class="panelGroup" id="ALL">
+            <div class="panel" id="CPG">
+                <div class="canvas"><canvas id="chartCPG"></canvas></div>
+                <img class="img" id="imgCPG" />
+            </div>
+            <div class="panel" id="KIG">
+                <div class="canvas"><canvas id="chartKIG"></canvas></div>
+                <img class="img" id="imgKIG" />
+            </div>
+            <div class="panel" id="LIG">
+                <div class="canvas"><canvas id="chartLIG"></canvas></div>
+                <img class="img" id="imgLIG" />
+            </div>
+            <div class="panel" id="TTG">
+                <div class="canvas"><canvas id="chartTTG"></canvas></div>
+                <img class="img" id="imgTTG" />
+            </div>
+        </div>
+
+        <div class="foot"></div>
+    </div>
+    
+    <div class="station">
+
+    </div>
+    
+</body>
+
+<script>
+
+var apiURL = "http://localhost:5000/GetData";
+var UpdateInterval = .1; //minutos
+var chartSize = 15;
+
+
+var apiDataSatellite = {
+  cp: {val: '', img:'', time:''},
+  ki: {val: '', img:'', time:''},
+  li: {val: '', img:'', time:''},
+  tt: {val: '', img:'', time:''},
+  si: {val: '', img:'', time:''}
+};
+
+var apiDataStatation = {};
+
+var CHARTS = {cp:null, ki:null, li:null, tt:null, si:null,
+cpg:null, kig:null, lig:null, ttg:null};
+var interval;
+
+function StartAutoUpdate() {
+  UpdateSatellite();
+  RemoveAllPanel();
+  document.getElementById('CP').style.display = "flex";
+  document.getElementById('btnCP').style.color = "red";
+  document.getElementById('stop').style.display = '';
+  document.getElementById('play').style.display = 'none';
+  interval = setInterval(UpdateSatellite, 60000*UpdateInterval);
+}
+function StopAutoUpdate() {
+  clearInterval(interval);
+  document.getElementById('stop').style.display = 'none';
+  document.getElementById('play').style.display = '';
+  document.getElementById("connStatus").src = "imgs/off.svg";
+}
+
+async function GetApiData() {
+  try {
+    const resp = await fetch(apiURL);
+    const apiData = await resp.json();
+    
+    apiDataSatellite.cp.val = apiData.cp.val;
+    apiDataSatellite.cp.time = apiData.time;
+    apiDataSatellite.cp.img = 'data:image/jpeg;base64,' + apiData.cp.img;
+
+    apiDataSatellite.ki.val = apiData.ki.val;
+    apiDataSatellite.ki.time = apiData.time;
+    apiDataSatellite.ki.img = 'data:image/jpeg;base64,' + apiData.ki.img;
+    
+    apiDataSatellite.li.val = apiData.li.val;
+    apiDataSatellite.li.time = apiData.time;
+    apiDataSatellite.li.img = 'data:image/jpeg;base64,' + apiData.li.img;
+    
+    apiDataSatellite.tt.val = apiData.tt.val;
+    apiDataSatellite.tt.time = apiData.time;
+    apiDataSatellite.tt.img = 'data:image/jpeg;base64,' + apiData.tt.img;
+    
+    apiDataSatellite.si.val = apiData.si.val;
+    apiDataSatellite.si.time = apiData.time;
+    apiDataSatellite.si.img = 'data:image/jpeg;base64,' + apiData.si.img;
+
+    document.getElementById("connStatus").src = "imgs/on.svg";
+    return true;
+  } 
+  catch(err) { 
+    document.getElementById("connStatus").src = "imgs/off.svg";
+    return false; 
+  }
+}
+
+function CreateAllCharts(){
+  CHARTS.cp = CreateChart('CAPE', apiDataSatellite.cp, 'chartCP');
+  CHARTS.ki = CreateChart('KI', apiDataSatellite.ki, 'chartKI');
+  CHARTS.li = CreateChart('LI', apiDataSatellite.li, 'chartLI');
+  CHARTS.tt = CreateChart('TT', apiDataSatellite.tt, 'chartTT');
+  CHARTS.si = CreateChart('SI', apiDataSatellite.si, 'chartSI');
+  CHARTS.cpg = CreateChart('CAPE', apiDataSatellite.cp, 'chartCPG');
+  CHARTS.kig = CreateChart('KI', apiDataSatellite.ki, 'chartKIG');
+  CHARTS.lig = CreateChart('LI', apiDataSatellite.li, 'chartLIG');
+  CHARTS.ttg = CreateChart('TT', apiDataSatellite.tt, 'chartTTG');
+}
+
+function CreateChart(name, data, canva) {
+    const ctx = document.getElementById(canva).getContext('2d');
+
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels:[],
+        datasets: [{
+          data:[],
+          backgroundColor: "red",
+          fill: false,
+          showLine: true,
+          borderColor: "red"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false,
+            },
+            title: {
+              display: true,
+              text: name,
+
+            }
+        }
+      }
+    });
+  }
+
+  async function UpdateSatellite(){
+
+    if(await GetApiData())
+    {
+      if(CHARTS.cp.data.labels.length >= chartSize) {              
+        CHARTS.cp.data.datasets[0].data.shift();
+        CHARTS.ki.data.datasets[0].data.shift();
+        CHARTS.li.data.datasets[0].data.shift();
+        CHARTS.tt.data.datasets[0].data.shift();
+        CHARTS.si.data.datasets[0].data.shift();
+        CHARTS.cpg.data.datasets[0].data.shift();
+        CHARTS.kig.data.datasets[0].data.shift();
+        CHARTS.lig.data.datasets[0].data.shift();
+        CHARTS.ttg.data.datasets[0].data.shift();
+        CHARTS.cp.data.labels.shift();
+        CHARTS.ki.data.labels.shift();
+        CHARTS.li.data.labels.shift();
+        CHARTS.tt.data.labels.shift();
+        CHARTS.si.data.labels.shift();
+        CHARTS.cpg.data.labels.shift();
+        CHARTS.kig.data.labels.shift();
+        CHARTS.lig.data.labels.shift();
+        CHARTS.ttg.data.labels.shift();
+      }
+
+      CHARTS.cp.data.labels.push(apiDataSatellite.cp.time);
+      CHARTS.cp.data.datasets[0].data.push(apiDataSatellite.cp.val);
+      CHARTS.ki.data.labels.push(apiDataSatellite.ki.time);
+      CHARTS.ki.data.datasets[0].data.push(apiDataSatellite.ki.val);   
+      CHARTS.li.data.labels.push(apiDataSatellite.li.time);
+      CHARTS.li.data.datasets[0].data.push(apiDataSatellite.li.val);
+      CHARTS.tt.data.labels.push(apiDataSatellite.tt.time);
+      CHARTS.tt.data.datasets[0].data.push(apiDataSatellite.tt.val);
+      CHARTS.si.data.labels.push(apiDataSatellite.si.time);
+      CHARTS.si.data.datasets[0].data.push(apiDataSatellite.si.val);
+      CHARTS.cpg.data.labels.push(apiDataSatellite.cp.time);
+      CHARTS.cpg.data.datasets[0].data.push(apiDataSatellite.cp.val);
+      CHARTS.kig.data.labels.push(apiDataSatellite.ki.time);
+      CHARTS.kig.data.datasets[0].data.push(apiDataSatellite.ki.val);   
+      CHARTS.lig.data.labels.push(apiDataSatellite.li.time);
+      CHARTS.lig.data.datasets[0].data.push(apiDataSatellite.li.val);
+      CHARTS.ttg.data.labels.push(apiDataSatellite.tt.time);
+      CHARTS.ttg.data.datasets[0].data.push(apiDataSatellite.tt.val);
+
+      CHARTS.cp.update();
+      CHARTS.ki.update();
+      CHARTS.li.update();
+      CHARTS.tt.update();
+      CHARTS.si.update();
+      CHARTS.cpg.update();
+      CHARTS.kig.update();
+      CHARTS.lig.update();
+      CHARTS.ttg.update();
+
+      document.getElementById('imgCP').src = apiDataSatellite.cp.img;
+      document.getElementById('imgKI').src = apiDataSatellite.ki.img;
+      document.getElementById('imgLI').src = apiDataSatellite.li.img;
+      document.getElementById('imgTT').src = apiDataSatellite.tt.img;
+      document.getElementById('imgSI').src = apiDataSatellite.si.img;
+      document.getElementById('imgCPG').src = apiDataSatellite.cp.img;
+      document.getElementById('imgKIG').src = apiDataSatellite.ki.img;
+      document.getElementById('imgLIG').src = apiDataSatellite.li.img;
+      document.getElementById('imgTTG').src = apiDataSatellite.tt.img;
+    }
+
+  }
+
+
+  function ChangeChartType(type){
+    CHARTS.cp.config.type = type;
+    CHARTS.ki.config.type = type;
+    CHARTS.li.config.type = type;
+    CHARTS.tt.config.type = type;
+    CHARTS.si.config.type = type;
+    CHARTS.cpg.config.type = type;
+    CHARTS.kig.config.type = type;
+    CHARTS.lig.config.type = type;
+    CHARTS.ttg.config.type = type;
+    CHARTS.cp.update();
+    CHARTS.ki.update();
+    CHARTS.li.update();
+    CHARTS.tt.update();
+    CHARTS.si.update();
+    CHARTS.cpg.update();
+    CHARTS.kig.update();
+    CHARTS.lig.update();
+    CHARTS.ttg.update();
+  }
+
+  function ChangeSatellitePanel(btn){    
+    RemoveAllPanel();
+    document.getElementById(btn.innerText).style.display = "flex";
+    btn.style.color = "red";    
+  }
+
+  function RemoveAllPanel() {
+    document.getElementById('CP').style.display = "none";
+    document.getElementById('KI').style.display = "none";
+    document.getElementById('LI').style.display = "none";
+    document.getElementById('TT').style.display = "none";
+    document.getElementById('SI').style.display = "none";
+    document.getElementById('ALL').style.display = "none";    
+
+    var x = document.getElementsByClassName("ctrlBtn2");
+    for (var i=0; i<x.length; i++)  x[i].style.color = "silver";
+  }
+
+  function ChangeFullScreen(){
+    var elem = document.getElementById('ALL');
+    elem.style.display = "grid";
+
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+  }
+
+  document.addEventListener('fullscreenchange', function(e){ 
+    if(!document.fullscreenElement) 
+      document.getElementById('ALL').style.display = "none";
+  });
+
+
+</script>
+
+<script>    
+    CreateAllCharts();
+</script>
+
+
+<style>
+
+* {margin: 0; padding: 0; border: 0; box-sizing: border-box; font-family:Arial, Helvetica, sans-serif}
+
+.base {
+    display: flex; flex-flow: column; align-items: center; justify-content: start; 
+    width: 100%;
+    background-color: rgb(33,33,33);
+}
+.headerMain {
+    display: flex; align-items: center; 
+    width: 80%; height: 80px;
+    margin: 40px 0; padding: 10px 20px;
+    color: white; font-size: 36px; background-color: rgb(66,66,66);
+    user-select: none;
+}
+
+.panelSatellite {
+    position: relative; 
+    display: flex; flex-flow: column; justify-content: center; align-items: center;
+    width: 80%; height: auto; padding: 40px 0;
+    background-color: rgb(66,66,66);
+    user-select: none;
+}
+.panelSatellite .commands {
+    display: flex; align-items: center; justify-content: space-between; 
+    width: 80%; height: 60px; border: 1px solid rgb(45,45,45); padding: 5px; 
+}
+.panelSatellite .leftBtn {
+    display: flex; align-items: center; justify-content: start; 
+}
+.panelSatellite .ctrlBtn1 {
+    width: 40px; height: 40px; cursor: pointer; margin: 0 5px; border: solid 0px;
+}
+.panelSatellite .ctrlBtn1:hover {
+    opacity: .5; 
+}
+.panelSatellite .connStatus {
+    width: 40px; height: 40px; margin: 0 5px; 
+}
+.panelSatellite .ctrlBtn2 {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; margin: 2px ;
+    border: 1px solid gray; color: silver;
+    border-radius: 0px; box-shadow: 0px 0px 3px;
+    font-size: 20px; cursor: pointer; user-select: none;
+}
+.panelSatellite .ctrlBtn2:hover {
+    border: white solid 1px; color: white;
+}
+.panelSatellite .panel {
+    display: none;
+    width: 80%; height: 450px; background-color: silver;
+    border: solid 1px gray;
+}
+.panelSatellite .panel .canvas{
+    width: 40%; padding: 5% 2%;
+    background-color: silver;
+}
+.panelSatellite .panel .img{
+    width: 60%; object-fit: contain; margin-right: 2%;
+}
+.panelSatellite .panelGroup{
+    display: none; grid: 50% 50% / 50% 50%;
+    width: 80%; height: 450px;
+    background-color: silver;    
+}
+.panelSatellite .panelGroup .panel {
+    display: flex; border: 1px solid;
+    width: 100%; height: auto; background-color: silver;
+}
+
+
+</style>
+
+
+
+</html>
+
