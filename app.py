@@ -2,6 +2,7 @@ from flask import Flask, jsonify, send_file, request
 from flask_cors import CORS
 import base64
 import os
+import pytz
 import numpy as np
 import subprocess
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -59,7 +60,7 @@ def getData():
         file = open('./data/si.val', 'r')
         valSI = file.read()
         resp = {
-            'time': datetime.now().time().strftime('%H:%M'),
+            'time': datetime.now(pytz.timezone('America/Sao_Paulo')).time().strftime('%H:%M'),
             'cp':{ 'img': base64.b64encode(imgCP).decode('utf-8'), 'val': valCP },
             'ki':{ 'img': base64.b64encode(imgKI).decode('utf-8'), 'val': valKI },
             'li':{ 'img': base64.b64encode(imgLI).decode('utf-8'), 'val': valLI },
